@@ -53,6 +53,13 @@ typedef enum {
 	XDP_TCP_FREE_PREFIX,
 } knot_tcp_relay_free_t;
 
+typedef enum {
+	XDP_TCP_IGNORE_NONE        = 0,
+	XDP_TCP_IGNORE_ESTABLISH   = (1 << 0),
+	XDP_TCP_IGNORE_DATA_ACK    = (1 << 1),
+	XDP_TCP_IGNORE_FIN         = (1 << 2),
+} knot_tcp_ignore_t;
+
 typedef struct tcp_outbufs {
 	struct tcp_outbuf *bufs;
 } tcp_outbufs_t; // this typedef belongs to tcp_iobuf.h, but is here to avoid issues with symbols
@@ -152,20 +159,22 @@ void knot_tcp_table_free(knot_tcp_table_t *table);
  * \return KNOT_E*
  */
 int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count,
-                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table);
+                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
+                  knot_tcp_ignore_t ignore);
 
 /*!
  * \brief Prepare data (payload) to be sent as a response on specific relay.
  *
  * \param relay       Relay with active connection.
  * \param tcp_table   TCP table.
+ * \param ignore_lastbyte  Evil mode: drop last byte of the payload.
  * \param data        Data payload, possibly > MSS and > window.
  * \param len         Payload length, < 64k.
  *
  * \return KNOT_E*
  */
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
-                        uint8_t *data, size_t len);
+                        bool ignore_lastbyte, uint8_t *data, size_t len);
 
 /*!
  * \brief Send TCP packets.

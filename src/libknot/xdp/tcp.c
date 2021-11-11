@@ -269,7 +269,8 @@ static void conn_update(knot_tcp_conn_t *conn, const knot_xdp_msg_t *msg)
 
 _public_
 int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count,
-                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table)
+                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
+                  knot_tcp_ignore_t ignore)
 {
 	if (count == 0) {
 		return KNOT_EOK;
@@ -310,7 +311,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 
 		// process incomming data
 		if (seq_ack_match && (msg->flags & KNOT_XDP_MSG_ACK) && msg->payload.iov_len > 0) {
-			relay->auto_answer = KNOT_XDP_MSG_ACK;
+			if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
+				relay->auto_answer = KNOT_XDP_MSG_ACK;
+			}
 			ret = tcp_inbuf_update(&conn->inbuf, msg->payload, &relay->inbufs,
 			                       &relay->inbufs_count, &tcp_table->inbufs_total);
 			if (ret != KNOT_EOK) {
@@ -334,7 +337,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				                    &relay->conn);
 				if (ret == KNOT_EOK) {
 					relay->action = synack ? XDP_TCP_ESTABLISH : XDP_TCP_SYN;
-					relay->auto_answer = synack ? KNOT_XDP_MSG_ACK : (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK);
+					if (!(ignore & XDP_TCP_IGNORE_ESTABLISH)) {
+						relay->auto_answer = synack ? KNOT_XDP_MSG_ACK : (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK);
+					}
 
 					conn = relay->conn;
 					conn->state = synack ? XDP_TCP_NORMAL: XDP_TCP_ESTABLISHING;
@@ -384,6 +389,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			}
 			break;
 		case (KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK):
+			if (ignore & XDP_TCP_IGNORE_FIN) {
+				break;
+			}
 			if (!seq_ack_match) {
 				if (conn != NULL) {
 					relay->auto_answer = KNOT_XDP_MSG_RST;
@@ -426,12 +434,12 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 
 _public_
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
-                        uint8_t *data, size_t len)
+                        bool ignore_lastbyte, uint8_t *data, size_t len)
 {
 	if (relay == NULL || tcp_table == NULL || relay->conn == NULL) {
 		return KNOT_EINVAL;
 	}
-	int ret = tcp_outbufs_add(&relay->conn->outbufs, data, len,
+	int ret = tcp_outbufs_add(&relay->conn->outbufs, data, len, ignore_lastbyte,
 	                          relay->conn->mss, &tcp_table->outbufs_total);
 
 	if (tcp_table->next_obuf == NULL && tcp_outbufs_usage(&relay->conn->outbufs) > 0) {

@@ -28,8 +28,8 @@ Options
   Duration of traffic generation, specified as a decimal number in seconds
   (default is 5.0).
 
-**-T**, **--tcp**
-  Send queries over TCP.
+**-T**, **--tcp**\[\ =\ *DEBUG_MODE*\]
+  Send queries over TCP. Optional debug mode see below.
 
 **-Q**, **--qps** *queries*
   Number of queries-per-second (approximately) to be sent (default is 1000).
@@ -85,6 +85,30 @@ name, and *flags* is a single character:
 **E** Send query with EDNS.
 
 **D** Request DNSSEC (EDNS + DO flag).
+
+TCP Debug Modes
+...............
+
+**1**
+  Just send SYN and receive SYN-ACK.
+
+**2**
+  Perform TCP handshake and don't send anything, allow close initiated by counterpart.
+
+**3**
+  Perform TCP handshake and don't react further.
+
+**5**
+  Send incomplete query (N-1 bytes) and don't react further.
+
+**7**
+  Send query and don't ACK the response or anthing further.
+
+**8**
+  Don't close the connection and ignore close by counterpart.
+
+**9**
+  Operate normally except of not ACKing the final FIN+ACK.
 
 Notes
 -----
