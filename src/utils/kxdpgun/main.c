@@ -795,7 +795,13 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			return false;
 		}
 	}
-	if (global_payloads == NULL || argc - optind != 1 ||
+
+	if (argc - optind != 1) {
+		print_help();
+		return false;
+	}
+
+	if (global_payloads == NULL ||
 	    !configure_target(argv[optind], local_ip, ctx)) {
 		return false;
 	}
