@@ -345,7 +345,7 @@ inline static void prot_write_ipv4(void *data, const knot_xdp_msg_t *msg,
 	ip4->tos      = 0;
 	ip4->tot_len  = htobe16(data_end - data);
 	ip4->id       = 0;
-	ip4->frag_off = 0;
+	ip4->frag_off = 0x0040; // DF bit
 	ip4->ttl      = IPDEFTTL;
 	ip4->protocol = ((msg->flags & KNOT_XDP_MSG_TCP) ? IPPROTO_TCP : IPPROTO_UDP);
 
