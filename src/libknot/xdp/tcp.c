@@ -305,6 +305,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			if (msg->flags & KNOT_XDP_MSG_ACK) {
 				conn->acked = msg->ackno;
 				tcp_outbufs_ack(&conn->outbufs, msg->ackno, &tcp_table->outbufs_total);
+				if (conn->outbufs.bufs != NULL) {
+					relay->answer = XDP_TCP_SEND;
+				}
 			}
 		}
 
@@ -453,6 +456,9 @@ int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
 	if (tcp_table->next_resend == NULL && tcp_outbufs_usage(&relay->conn->outbufs) > 0) {
 		tcp_table->next_resend = relay->conn;
 	}
+	if (ret == KNOT_EOK) {
+		relay->answer = XDP_TCP_SEND;
+	}
 	return ret;
 }
 
@@ -577,7 +583,7 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
 
 		size_t can_data = 0;
 		struct tcp_outbuf *ob;
-		if (rl->conn != NULL) {
+		if (rl->conn != NULL && rl->answer == XDP_TCP_SEND) {
 			tcp_outbufs_can_send(&rl->conn->outbufs, rl->conn->window_size,
 			                     rl->answer == XDP_TCP_RESEND, &ob, &can_data);
 		}
